@@ -6,11 +6,11 @@ TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
 # 2. 설정: 목표 가격 및 추적 정보
-TARGET_PRICE = 400000  # 원하시는 목표 가격 (원 단위)
+TARGET_PRICE = 450000  # 원하시는 목표 가격 (원 단위)
 ORIGIN = "ICN"         # 출발지 (인천)
-DESTINATION = "GUM"    # 목적지 (예: 괌 GUM, 오키나와 OKA 등)
-DEPART_DATE = "2026-11-01" # 출발일
-RETURN_DATE = "2026-11-05" # 귀국일
+DESTINATION = "HKG"    # 목적지 (예: 괌 GUM, 오키나와 OKA 등)
+DEPART_DATE = "2026-11-26" # 출발일
+RETURN_DATE = "2026-11-29" # 귀국일
 
 def send_telegram_msg(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
