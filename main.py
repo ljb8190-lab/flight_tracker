@@ -15,13 +15,13 @@ RETURN_DATE = "2026-11-29"
 
 # 시간대 조건
 OUT_DEP_START = "06:00"
-OUT_DEP_END   = "15:00"
+OUT_DEP_END   = "16:00"
 
 RET_DEP_START = "12:00"
 RET_DEP_END   = "22:00"
 
 # 테스트를 위해 목표 가격을 살짝 여유 있게 잡거나(예: 60만원) 상향 테스트 추천
-MAX_PRICE = 550000  
+MAX_PRICE = 600000  
 
 KOREAN_AIRLINES = [
     "Korean Air", "대한항공", 
@@ -136,7 +136,7 @@ def check_flights():
 
             matched_deals.append({
                 "price": price,
-                "is_korean": is_out_kr and is_ret_kr,
+                "is_korean": is_out_kr or is_ret_kr,
                 "out_airline": out_airline,
                 "out_flight_no": outbound_leg.get("flight_number", ""),
                 "out_dep_time": out_dep_time,
