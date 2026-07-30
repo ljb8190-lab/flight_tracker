@@ -1,30 +1,27 @@
 import os
 import requests
 
-# 1. 환경 변수 (GitHub Secrets)
+# 1. 환경 변수
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 SERPAPI_KEY = os.environ.get("SERPAPI_KEY")
 
-# 2. 항공권 조회 조건 설정
-DEPARTURE_AIRPORT = "ICN"  # 인천 (Incheon)
-ARRIVAL_AIRPORT = "HKG"    # 홍콩 (Hong Kong)
+# 2. 조회 조건
+DEPARTURE_AIRPORT = "ICN"
+ARRIVAL_AIRPORT = "HKG"
 
-OUTBOUND_DATE = "2026-11-26"  # 가는 날 (목)
-RETURN_DATE = "2026-11-29"    # 오는 날 (일)
+OUTBOUND_DATE = "2026-11-26"
+RETURN_DATE = "2026-11-29"
 
-# 🕒 시간대 범위 설정 (24시간제 HH:MM)
-OUT_DEP_START = "06:00"  # 가는 편 출발 시작 (오전 6시)
-OUT_DEP_END   = "14:00"  # 가는 편 출발 마감 (오후 2시)
+# 시간대 조건
+OUT_DEP_START = "06:00"
+OUT_DEP_END   = "14:00"
 
-RET_DEP_START = "12:00"  # 오는 편 출발 시작 (정오 12시)
-RET_DEP_END   = "22:00"  # 오는 편 출발 마감 (밤 10시)
+RET_DEP_START = "12:00"
+RET_DEP_END   = "22:00"
 
-MAX_PRICE = 450000  # 목표 감시 가격 (원)
-
-# 🇰🇷 국내 항공사 우선 및 필터 설정
-# True : 국내 항공사 결과만 수집 / False : 전체 수집하되 국내 항공사 우선 표시
-KOREAN_AIRLINES_ONLY = True  
+# 테스트를 위해 목표 가격을 살짝 여유 있게 잡거나(예: 60만원) 상향 테스트 추천
+MAX_PRICE = 500000  
 
 KOREAN_AIRLINES = [
     "Korean Air", "대한항공", 
@@ -38,19 +35,33 @@ KOREAN_AIRLINES = [
 ]
 
 def is_korean_airline(airline_name):
-    """항공사 이름이 국내 항공사 목록에 포함되는지 확인"""
     if not airline_name:
         return False
-    return any(kr_name.lower() in airline_name.lower() for kr_name in KOREAN_AIRLINES)
+    return any(kr_name.lower() in str(airline_name).lower() for kr_name in KOREAN_AIRLINES)
+
+def parse_time_to_24h(time_str):
+    """'9:30 AM' 또는 '09:30' 형태의 시간을 '09:30' (24시간) 포맷으로 통일"""
+    if not time_str:
+        return ""
+    time_str = time_str.strip()
+    # 이미 24시간 포맷("09:30")인 경우
+    if "AM" not in time_str and "PM" not in time_str:
+        parts = time_str.split(":")
+        if len(parts) == 2:
+            return f"{int(parts[0]):02d}:{parts[1]}"
+        return time_str
+    
+    # AM/PM 포함된 경우 ("09:30 AM")
+    try:
+        from datetime import datetime
+        dt = datetime.strptime(time_str, "%I:%M %p")
+        return dt.strftime("%H:%M")
+    except:
+        return time_str
 
 def send_telegram_msg(message):
-    """텔레그램 메시지 발송 함수"""
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": message,
-        "parse_mode": "Markdown"
-    }
+    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "Markdown"}
     try:
         res = requests.post(url, json=payload)
         res.raise_for_status()
@@ -59,7 +70,6 @@ def send_telegram_msg(message):
         print(f"텔레그램 전송 실패: {e}")
 
 def check_flights():
-    """Google Flights API(via SerpApi)를 통한 항공권 조회"""
     url = "https://serpapi.com/search.json"
     params = {
         "engine": "google_flights",
@@ -72,58 +82,69 @@ def check_flights():
         "api_key": SERPAPI_KEY
     }
 
-
     try:
         response = requests.get(url, params=params)
         data = response.json()
         
         flights_list = data.get("best_flights", []) + data.get("other_flights", [])
+        print(f"🔍 API에서 수집된 전체 항공편 개수: {len(flights_list)}개")
+
         matched_deals = []
 
-        for flight in flights_list:
+        for idx, flight in enumerate(flights_list, 1):
             price = flight.get("price", 0)
-            
-            # 목표 가격 이하 조건 체크
-            if price > MAX_PRICE:
-                continue
-
             legs = flight.get("flights", [])
+            
             if len(legs) < 2:
+                print(f"[{idx}] 스킵: 왕복 편수 부족")
                 continue
 
             outbound_leg = legs[0]
             return_leg = legs[1]
 
-            out_airline = outbound_leg.get("airline", "항공사 미상")
-            ret_airline = return_leg.get("airline", "항공사 미상")
+            out_airline = outbound_leg.get("airline", "미상")
+            ret_airline = return_leg.get("airline", "미상")
 
-            # 출발 시간 추출
-            out_dep_time = outbound_leg.get("departure_token", {}).get("time", "")
-            ret_dep_time = return_leg.get("departure_token", {}).get("time", "")
+            # 시간 추출 및 24시간제 정규화
+            raw_out_time = outbound_leg.get("departure_token", {}).get("time") or outbound_leg.get("departure_time", "")
+            raw_ret_time = return_leg.get("departure_token", {}).get("time") or return_leg.get("departure_time", "")
+            
+            out_dep_time = parse_time_to_24h(raw_out_time)
+            ret_dep_time = parse_time_to_24h(raw_ret_time)
 
-            # 🕒 시간대 필터링
+            # 디버깅 로그 출력
+            print(f"[{idx}] {out_airline}/{ret_airline} | 가격: {price:,}원 | 가는편: {out_dep_time} | 오는편: {ret_dep_time}")
+
+            # 1) 가격 검증
+            if price > MAX_PRICE:
+                print(f"  └ ❌ 가격 초과 (목표가 {MAX_PRICE:,}원 / 현재가 {price:,}원)")
+                continue
+
+            # 2) 시간 검증
             if not (OUT_DEP_START <= out_dep_time <= OUT_DEP_END):
-                continue
-            if not (RET_DEP_START <= ret_dep_time <= RET_DEP_END):
+                print(f"  └ ❌ 가는 편 시간 불일치 ({out_dep_time} != {OUT_DEP_START}~{OUT_DEP_END})")
                 continue
 
-            # 🇰🇷 국적기 필터링 (왕편, 복편 모두 국내 항공사인지 확인)
+            if not (RET_DEP_START <= ret_dep_time <= RET_DEP_END):
+                print(f"  └ ❌ 오는 편 시간 불일치 ({ret_dep_time} != {RET_DEP_START}~{RET_DEP_END})")
+                continue
+
+            print("  └ ✅ 모든 조건 만족!")
+
             is_out_kr = is_korean_airline(out_airline)
             is_ret_kr = is_korean_airline(ret_airline)
-            is_full_korean = is_out_kr and is_ret_kr
 
             matched_deals.append({
                 "price": price,
-                "is_korean": is_full_korean,  # 둘 다 국내 항공사면 True
+                "is_korean": is_out_kr and is_ret_kr,
                 "out_airline": out_airline,
                 "out_flight_no": outbound_leg.get("flight_number", ""),
                 "out_dep_time": out_dep_time,
-                "out_arr_time": outbound_leg.get("arrival_token", {}).get("time", ""),
-                
+                "out_arr_time": parse_time_to_24h(outbound_leg.get("arrival_token", {}).get("time") or outbound_leg.get("arrival_time", "")),
                 "ret_airline": ret_airline,
                 "ret_flight_no": return_leg.get("flight_number", ""),
                 "ret_dep_time": ret_dep_time,
-                "ret_arr_time": return_leg.get("arrival_token", {}).get("time", ""),
+                "ret_arr_time": parse_time_to_24h(return_leg.get("arrival_token", {}).get("time") or return_leg.get("arrival_time", "")),
             })
 
         return matched_deals
@@ -141,18 +162,13 @@ def main():
     deals = check_flights()
 
     if deals:
-        # 🌟 핵심 정렬 로직:
-        # 1순위: is_korean이 True인 것(국내 항공사)을 가장 위에 배치
-        # 2순위: 가격이 저렴한 순서
         sorted_deals = sorted(deals, key=lambda x: (not x['is_korean'], x['price']))[:5]
-
-        # 검색 결과 중 국내 항공사가 포함되어 있는지 확인
         has_kr_airline = any(deal['is_korean'] for deal in sorted_deals)
 
         msg = f"✈️ *조건에 맞는 홍콩 항공권 발견!*\n\n"
         msg += f"• *구간:* 인천(ICN) ⇄ 홍콩(HKG)\n"
         msg += f"• *일정:* {OUTBOUND_DATE} ~ {RETURN_DATE}\n"
-        msg += f"• *안내:* {'🇰🇷 국내 항공사 우선 표시' if has_kr_airline else '🌐 외항사 검색 결과 (국내사 조건 미부합)'}\n"
+        msg += f"• *안내:* {'🇰🇷 국내 항공사 우선' if has_kr_airline else '🌐 외항사 검색 결과'}\n"
         msg += f"───────────────\n\n"
 
         for deal in sorted_deals:
@@ -165,7 +181,7 @@ def main():
 
         send_telegram_msg(msg)
     else:
-        print(f"지정한 조건(시간대 및 {MAX_PRICE:,}원 이하)에 맞는 항공권이 없습니다.")
+        print(f"\n결과: 조건을 만족하는 항공권이 없습니다.")
 
 if __name__ == "__main__":
     main()
