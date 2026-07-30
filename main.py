@@ -15,13 +15,13 @@ RETURN_DATE = "2026-11-29"
 
 # 시간대 조건
 OUT_DEP_START = "06:00"
-OUT_DEP_END   = "14:00"
+OUT_DEP_END   = "15:00"
 
 RET_DEP_START = "12:00"
 RET_DEP_END   = "22:00"
 
 # 테스트를 위해 목표 가격을 살짝 여유 있게 잡거나(예: 60만원) 상향 테스트 추천
-MAX_PRICE = 500000  
+MAX_PRICE = 550000  
 
 KOREAN_AIRLINES = [
     "Korean Air", "대한항공", 
