@@ -227,8 +227,8 @@ def main():
         sorted_deals = sorted(unique_deals, key=lambda x: (not x['is_korean'], x['price']))[:5]
         has_kr_airline = any(deal['is_korean'] for deal in sorted_deals)
 
-        msg = f"✈️ *조건에 맞는 홍콩 항공권 발견!*\n\n"
-        msg += f"• *구간:* 인천(ICN) ⇄ 홍콩(HKG)\n"
+        msg = f"✈️ *조건에 맞는 항공권 발견!*\n\n"
+        msg += f"• *구간:* 인천(ICN) ⇄ 오키나와(OKA)\n"
         msg += f"• *일정:* {OUTBOUND_DATE} ~ {RETURN_DATE}\n"
         msg += f"• *안내:* {'🇰🇷 국내 항공사 우선' if has_kr_airline else '🌐 외항사 검색 결과'}\n"
         msg += f"───────────────\n\n"
