@@ -9,19 +9,19 @@ SERPAPI_KEY = os.environ.get("SERPAPI_KEY")
 
 # 2. 항공권 조회 조건 설정
 DEPARTURE_AIRPORT = "ICN"  # 인천
-ARRIVAL_AIRPORT = "HKG"    # 홍콩
+ARRIVAL_AIRPORT = "OKA"    # 오키나와
 
 OUTBOUND_DATE = "2026-11-26"  # 가는 날 (목)
 RETURN_DATE = "2026-11-29"    # 오는 날 (일)
 
 # 🕒 시간대 범위 설정 (24시간제 HH:MM)
 OUT_DEP_START = "06:00"  # 가는 편 출발 시작
-OUT_DEP_END   = "14:00"  # 가는 편 출발 마감
+OUT_DEP_END   = "12:00"  # 가는 편 출발 마감
 
-RET_DEP_START = "12:00"  # 오는 편 출발 시작
-RET_DEP_END   = "22:00"  # 오는 편 출발 마감
+RET_DEP_START = "10:00"  # 오는 편 출발 시작
+RET_DEP_END   = "18:00"  # 오는 편 출발 마감
 
-MAX_PRICE = 500000  # 목표 감시 가격 (원)
+MAX_PRICE = 400000  # 목표 감시 가격 (원)
 
 # 🇰🇷 국내 항공사 정의 목록
 KOREAN_AIRLINES = [
